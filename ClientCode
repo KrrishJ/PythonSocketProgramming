@@ -1,0 +1,67 @@
+import socket
+import errno
+import sys
+
+HDR_LEN = 10
+
+IP = "127.0.0.1"
+PORT = 15555
+my_username = input("Please Enter Your Username : ")
+
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+client_socket.connect((IP, PORT))
+client_socket.setblocking(False)
+
+usrname = my_username.encode('utf-8')
+usr_hdr = f"{len(usrname):<{HDR_LEN}}".encode('utf-8')
+client_socket.send(usr_hdr + usrname)
+
+while True:
+
+    msg = input(f'{my_username} > ')
+
+    if msg:
+
+        msg = msg.encode('utf-8')
+        msg_hdr = f"{len(msg):<{HDR_LEN}}".encode('utf-8')
+        client_socket.send(msg_hdr + msg)
+        print(f"Received{msg}")
+        continue
+
+
+    try:
+
+
+        while True:
+
+            usr_hdr = client_socket.recv(HDR_LEN)
+
+
+            if not len(usr_hdr):
+                print('Connection closed by the server')
+                sys.exit()
+
+            usrname_len = int(usr_hdr.decode('utf-8').strip())
+
+            usrname = client_socket.recv(usrname_len).decode('utf-8')
+
+            msg_hdr = client_socket.recv(HDR_LEN)
+            msg_len = int(msg_hdr.decode('utf-8').strip())
+            msg = client_socket.recv(msg_len).decode('utf-8')
+
+
+            print(f'{usrname} > {msg}')
+
+
+    except IOError as e:
+        if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+            print('Reading error: {}'.format(str(e)))
+            sys.exit()
+
+        continue
+
+    except Exception as e:
+
+        print('Reading error: '.format(str(e)))
+        sys.exit()
